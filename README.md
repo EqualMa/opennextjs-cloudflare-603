@@ -10,14 +10,22 @@ Then goto http://localhost:8787/issue603 for errors.
 
 Goto http://localhost:8787/ for workarounds.
 
-## How workaround works
+## How to workaround this issue
 
-`next dev` and `next build` doesn't error because they have real `node:http`.
-`npm run preview` has error because workers runtime provides incompatible `Agent` constructor in `node:http`.
+If package `cloudflare` caused this error,
+see [`next.config.ts`](next.config.ts) for a workaround.
 
-If you use package `cloudflare`, the node runtime shim get imported, where
-some code fails because `node:http.Agent.options` is undefined in workers runtime.
+## How this workaround works
+
+This error is caused by the following steps:
+
+1. We import `cloudflare` in our app.
+2. `./node_modules/cloudflare/core.mjs` imports `./node_modules/cloudflare/_shims/index.mjs`, which imports `cloudflare/_shims/auto/runtime`
+3. `cloudflare/_shims/auto/runtime` get resolved to `./node_modules/cloudflare/_shims/auto/runtime-node.mjs`. (Defined by `cloudflare/package.json` when `node` condition is `true`. I don't know why nextjs compiler chooses `node` over `browser`.)
+4. `./node_modules/cloudflare/_shims/auto/runtime-node.mjs` constructs `new new KeepAliveAgent.HttpsAgent(...)` at the module level as a default value, even that value might not be used when overridden.
+5. The constructor of `HttpsAgent` from package `keepaliveagent` fails in workers runtime because it relies on `node:http.Agent`'s constructor to set `this.options` to an object. However, `node:http.Agent` from workers runtime doesn't align with this behavior.
+
+This is why `npm run preview` fails on any page which imports `cloudflare`.
+`next dev` and `next build` works because they have real `node:http`.
 
 The workaround is to force `cloudflare/_shims/auto/runtime` to be resolved to web runtime when compiling.
-
-See [`next.config.ts`](next.config.ts) for how to apply this workaround.
