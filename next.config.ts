@@ -1,21 +1,22 @@
 import type { NextConfig } from "next";
 import path from "path";
 
-const newAlias = {
-  "cloudflare/_shims/auto/runtime": path.resolve(
-    __dirname,
-    "node_modules/cloudflare/_shims/auto/runtime.mjs"
-  ),
-};
-
 const nextConfig: NextConfig = {
   webpack: (config) => {
     const alias = ((config.resolve ??= {}).alias ??= {});
-    Object.assign(alias, newAlias);
+    alias["cloudflare/_shims/auto/runtime"] = path.resolve(
+      __dirname,
+      "./node_modules/cloudflare/_shims/auto/runtime.mjs"
+    );
 
     return config;
   },
-  turbopack: { resolveAlias: newAlias },
+  turbopack: {
+    resolveAlias: {
+      "cloudflare/_shims/auto/runtime":
+        "./node_modules/cloudflare/_shims/auto/runtime.mjs",
+    },
+  },
 };
 
 export default nextConfig;
